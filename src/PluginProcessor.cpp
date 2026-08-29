@@ -66,6 +66,9 @@ void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 
     // All allocation happens here. processBlock must never allocate.
     delayLine.prepare (spec);
+    toneFilter.prepare (spec);
+    toneFilter.setType (juce::dsp::FirstOrderTPTFilterType::lowpass);
+    toneFilter.reset();
     delayLine.setMaximumDelayInSamples (static_cast<int> (std::ceil (maxDelaySeconds * sampleRate)) + 1);
     delayLine.reset();
 
@@ -80,6 +83,7 @@ void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 void OrbitDelayAudioProcessor::releaseResources()
 {
     delayLine.reset();
+    toneFilter.reset();
 }
 
 bool OrbitDelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -109,6 +113,8 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
     const auto feedback = feedbackParam->load() * 0.01f;
 
+    toneFilter.setCutoffFrequency (toneHzParam->load());
+
     // Equal power: at 50% both signals sit at ~0.707, so the midpoint doesn't dip in level.
     const auto mix      = mixParam->load() * 0.01f;
     const auto dryGain  = std::cos (mix * juce::MathConstants<float>::halfPi);
@@ -127,7 +133,11 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             const auto dry     = channels[channel][i];
             const auto delayed = delayLine.popSample (channel, delaySamples, true);
 
-            delayLine.pushSample (channel, dry + delayed * feedback);
+            // Filtering what goes back in - rather than what comes out - is what
+            // makes each successive repeat darker than the last.
+            const auto damped = toneFilter.processSample (channel, delayed);
+
+            delayLine.pushSample (channel, dry + damped * feedback);
 
             channels[channel][i] = dry * dryGain + delayed * wetGain;
         }

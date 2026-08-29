@@ -44,6 +44,11 @@ private:
     // makes a moving delay time possible at all.
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
 
+    // One pole (6 dB/oct) sitting inside the feedback path. Gentle on purpose: a
+    // steeper filter collapses the repeats to mud within a few passes, and
+    // resonance here would be a second gain stage inside a feedback loop.
+    juce::dsp::FirstOrderTPTFilter<float> toneFilter;
+
     // Gliding the read position instead of jumping it is what turns a click into
     // the tape-style pitch bend people actually want from a delay.
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedDelaySamples;
