@@ -2,6 +2,27 @@
 
 namespace
 {
+    // Note divisions, as a multiple of a quarter note. Grouped by base note value
+    // with the triplet and dotted variants around it, which is how synced delays
+    // conventionally present them.
+    struct Division { const char* name; double beats; };
+
+    constexpr Division divisions[] = {
+        { "1/32",   0.125 },
+        { "1/16T",  0.25 * 2.0 / 3.0 },
+        { "1/16",   0.25 },
+        { "1/16.",  0.25 * 1.5 },
+        { "1/8T",   0.5 * 2.0 / 3.0 },
+        { "1/8",    0.5 },
+        { "1/8.",   0.5 * 1.5 },
+        { "1/4T",   1.0 * 2.0 / 3.0 },
+        { "1/4",    1.0 },
+        { "1/4.",   1.0 * 1.5 },
+        { "1/2",    2.0 }
+    };
+
+    constexpr int numDivisions = (int) (sizeof (divisions) / sizeof (divisions[0]));
+
     // Frequency and time both feel logarithmic to the ear, so a linear knob would
     // cram everything audible into the bottom of its travel. setSkewForCentre puts
     // the given value at the halfway point of the knob.
@@ -39,6 +60,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrbitDelayAudioProcessor::cr
         skewedRange (200.0f, 20000.0f, 2000.0f, 1.0f), 6000.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "sync", 1 }, "Sync", false));
+
+    juce::StringArray divisionNames;
+    for (const auto& d : divisions)
+        divisionNames.add (d.name);
+
+    // Default to 1/8 dotted - the classic synced-delay setting.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "division", 1 }, "Division", divisionNames, 6));
+
     return layout;
 }
 
@@ -52,6 +84,19 @@ OrbitDelayAudioProcessor::OrbitDelayAudioProcessor()
     feedbackParam = apvts.getRawParameterValue ("feedback");
     mixParam      = apvts.getRawParameterValue ("mix");
     toneHzParam   = apvts.getRawParameterValue ("tone");
+    syncParam     = apvts.getRawParameterValue ("sync");
+    divisionParam = apvts.getRawParameterValue ("division");
+}
+
+double OrbitDelayAudioProcessor::currentTargetDelayMs() const
+{
+    if (syncParam->load() > 0.5f)
+    {
+        const auto index = juce::jlimit (0, numDivisions - 1, static_cast<int> (divisionParam->load()));
+        return divisions[index].beats * 60000.0 / lastKnownBpm;
+    }
+
+    return timeMsParam->load();
 }
 
 void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -72,12 +117,13 @@ void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     delayLine.setMaximumDelayInSamples (static_cast<int> (std::ceil (maxDelaySeconds * sampleRate)) + 1);
     delayLine.reset();
 
-    // Start already at the current time, so the first block doesn't glide up from zero.
+    // Start already at the current time, so the first block doesn't glide up from
+    // zero - or, with Sync on, glide across from the unrelated free-ms value.
     smoothedDelaySamples.reset (sampleRate, timeGlideSeconds);
     smoothedDelaySamples.setCurrentAndTargetValue (
         juce::jlimit (1.0f,
                       static_cast<float> (maxDelaySeconds * sampleRate),
-                      static_cast<float> (timeMsParam->load() * 0.001 * sampleRate)));
+                      static_cast<float> (currentTargetDelayMs() * 0.001 * sampleRate)));
 }
 
 void OrbitDelayAudioProcessor::releaseResources()
@@ -106,10 +152,18 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto numSamples  = buffer.getNumSamples();
     const auto numChannels = juce::jmin (getTotalNumInputChannels(), getTotalNumOutputChannels());
 
+    // Track the host tempo every block, even when free-running, so flipping Sync
+    // on is immediately correct rather than snapping a block later.
+    if (auto* playHead = getPlayHead())
+        if (const auto position = playHead->getPosition())
+            if (const auto bpm = position->getBpm())
+                if (*bpm > 0.0)
+                    lastKnownBpm = *bpm;
+
     smoothedDelaySamples.setTargetValue (juce::jlimit (
         1.0f,
         static_cast<float> (maxDelaySeconds * currentSampleRate),
-        static_cast<float> (timeMsParam->load() * 0.001 * currentSampleRate)));
+        static_cast<float> (currentTargetDelayMs() * 0.001 * currentSampleRate)));
 
     const auto feedback = feedbackParam->load() * 0.01f;
 

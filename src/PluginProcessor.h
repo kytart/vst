@@ -38,7 +38,13 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
 private:
-    static constexpr float maxDelaySeconds = 2.0f;
+    // Single source of truth for the delay time, so prepareToPlay and processBlock
+    // can never disagree about it.
+    double currentTargetDelayMs() const;
+
+    // 4 seconds so a 1/2 note division still fits at slow tempos: at 40 BPM that
+    // is 3 seconds. Costs ~1.5 MB of RAM.
+    static constexpr float maxDelaySeconds = 4.0f;
 
     // Linear interpolation lets the read position sit between samples, which is what
     // makes a moving delay time possible at all.
@@ -61,6 +67,12 @@ private:
     std::atomic<float>* feedbackParam   = nullptr;
     std::atomic<float>* mixParam        = nullptr;
     std::atomic<float>* toneHzParam     = nullptr;
+    std::atomic<float>* syncParam       = nullptr;
+    std::atomic<float>* divisionParam   = nullptr;
+
+    // The host's tempo is Optional at two levels, and Standalone has no host at
+    // all, so remember the last real value rather than jumping when it's absent.
+    double lastKnownBpm = 120.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrbitDelayAudioProcessor)
 };
