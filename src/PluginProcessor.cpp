@@ -54,12 +54,25 @@ OrbitDelayAudioProcessor::OrbitDelayAudioProcessor()
     toneHzParam   = apvts.getRawParameterValue ("tone");
 }
 
-void OrbitDelayAudioProcessor::prepareToPlay (double, int)
+void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    currentSampleRate = sampleRate;
+
+    const juce::dsp::ProcessSpec spec {
+        sampleRate,
+        static_cast<juce::uint32> (samplesPerBlock),
+        static_cast<juce::uint32> (juce::jmax (1, getTotalNumOutputChannels()))
+    };
+
+    // All allocation happens here. processBlock must never allocate.
+    delayLine.prepare (spec);
+    delayLine.setMaximumDelayInSamples (static_cast<int> (std::ceil (maxDelaySeconds * sampleRate)) + 1);
+    delayLine.reset();
 }
 
 void OrbitDelayAudioProcessor::releaseResources()
 {
+    delayLine.reset();
 }
 
 bool OrbitDelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -76,9 +89,39 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Scaffolding only: audio passes through untouched. The delay line lands in a later commit.
     for (auto i = getTotalNumInputChannels(); i < getTotalNumOutputChannels(); ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+
+    const auto numSamples  = buffer.getNumSamples();
+    const auto numChannels = juce::jmin (getTotalNumInputChannels(), getTotalNumOutputChannels());
+
+    const auto delaySamples = juce::jlimit (
+        1.0f,
+        static_cast<float> (maxDelaySeconds * currentSampleRate),
+        static_cast<float> (timeMsParam->load() * 0.001 * currentSampleRate));
+
+    const auto feedback = feedbackParam->load() * 0.01f;
+
+    // Equal power: at 50% both signals sit at ~0.707, so the midpoint doesn't dip in level.
+    const auto mix      = mixParam->load() * 0.01f;
+    const auto dryGain  = std::cos (mix * juce::MathConstants<float>::halfPi);
+    const auto wetGain  = std::sin (mix * juce::MathConstants<float>::halfPi);
+
+    for (int channel = 0; channel < numChannels; ++channel)
+    {
+        auto* samples = buffer.getWritePointer (channel);
+
+        // Sample-by-sample, because each output feeds back into the next input.
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto dry     = samples[i];
+            const auto delayed = delayLine.popSample (channel, delaySamples, true);
+
+            delayLine.pushSample (channel, dry + delayed * feedback);
+
+            samples[i] = dry * dryGain + delayed * wetGain;
+        }
+    }
 }
 
 juce::AudioProcessorEditor* OrbitDelayAudioProcessor::createEditor()

@@ -22,7 +22,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return maxDelaySeconds; }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -38,6 +38,14 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
 private:
+    static constexpr float maxDelaySeconds = 2.0f;
+
+    // Linear interpolation lets the read position sit between samples, which is what
+    // makes a moving delay time possible at all.
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
+
+    double currentSampleRate = 44100.0;
+
     // Cached raw pointers so processBlock never does a string lookup on the audio thread.
     std::atomic<float>* timeMsParam     = nullptr;
     std::atomic<float>* feedbackParam   = nullptr;
