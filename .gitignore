@@ -2,5 +2,7 @@ build/
 .DS_Store
 *.user
 
-# JUCE's JS frontend library, copied in by CMake at configure time.
-ui/public/js/juce/
+# JUCE's JS frontend library, copied into each plugin by CMake at configure
+# time. Patterns containing a slash are anchored to this file's directory, so
+# this needs the ** to reach into plugins/*/.
+**/ui/public/js/juce/

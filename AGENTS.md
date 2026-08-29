@@ -10,4 +10,4 @@ The five canonical triage roles, using the default label strings unchanged. See 
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Multi-context monorepo: `CONTEXT-MAP.md` at the root points at one `CONTEXT.md` per plugin. See `docs/agents/domain.md`.

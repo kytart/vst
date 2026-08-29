@@ -1,6 +1,6 @@
 #include "PluginEditor.h"
 
-#include "WebViewFiles.h"
+#include "OrbitDelayWebViewFiles.h"
 
 namespace
 {
@@ -62,8 +62,8 @@ OrbitDelayAudioProcessorEditor::getResource (const juce::String& url) const
     const auto path = url == "/" ? juce::String ("index.html")
                                  : url.fromFirstOccurrenceOf ("/", false, false);
 
-    juce::MemoryInputStream zipStream { webview_files::webview_files_zip,
-                                        (size_t) webview_files::webview_files_zipSize,
+    juce::MemoryInputStream zipStream { orbit_delay_webview::orbit_delay_webview_zip,
+                                        (size_t) orbit_delay_webview::orbit_delay_webview_zipSize,
                                         false };
     juce::ZipFile zip { zipStream };
 
