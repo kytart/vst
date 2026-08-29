@@ -68,6 +68,13 @@ void OrbitDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     delayLine.prepare (spec);
     delayLine.setMaximumDelayInSamples (static_cast<int> (std::ceil (maxDelaySeconds * sampleRate)) + 1);
     delayLine.reset();
+
+    // Start already at the current time, so the first block doesn't glide up from zero.
+    smoothedDelaySamples.reset (sampleRate, timeGlideSeconds);
+    smoothedDelaySamples.setCurrentAndTargetValue (
+        juce::jlimit (1.0f,
+                      static_cast<float> (maxDelaySeconds * sampleRate),
+                      static_cast<float> (timeMsParam->load() * 0.001 * sampleRate)));
 }
 
 void OrbitDelayAudioProcessor::releaseResources()
@@ -95,10 +102,10 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto numSamples  = buffer.getNumSamples();
     const auto numChannels = juce::jmin (getTotalNumInputChannels(), getTotalNumOutputChannels());
 
-    const auto delaySamples = juce::jlimit (
+    smoothedDelaySamples.setTargetValue (juce::jlimit (
         1.0f,
         static_cast<float> (maxDelaySeconds * currentSampleRate),
-        static_cast<float> (timeMsParam->load() * 0.001 * currentSampleRate));
+        static_cast<float> (timeMsParam->load() * 0.001 * currentSampleRate)));
 
     const auto feedback = feedbackParam->load() * 0.01f;
 
@@ -107,19 +114,22 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto dryGain  = std::cos (mix * juce::MathConstants<float>::halfPi);
     const auto wetGain  = std::sin (mix * juce::MathConstants<float>::halfPi);
 
-    for (int channel = 0; channel < numChannels; ++channel)
-    {
-        auto* samples = buffer.getWritePointer (channel);
+    auto* const* channels = buffer.getArrayOfWritePointers();
 
-        // Sample-by-sample, because each output feeds back into the next input.
-        for (int i = 0; i < numSamples; ++i)
+    // Sample-outer, channel-inner: the smoothed delay time must advance once per
+    // sample, not once per sample per channel, or the two channels drift apart.
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const auto delaySamples = smoothedDelaySamples.getNextValue();
+
+        for (int channel = 0; channel < numChannels; ++channel)
         {
-            const auto dry     = samples[i];
+            const auto dry     = channels[channel][i];
             const auto delayed = delayLine.popSample (channel, delaySamples, true);
 
             delayLine.pushSample (channel, dry + delayed * feedback);
 
-            samples[i] = dry * dryGain + delayed * wetGain;
+            channels[channel][i] = dry * dryGain + delayed * wetGain;
         }
     }
 }

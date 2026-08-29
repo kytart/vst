@@ -44,6 +44,11 @@ private:
     // makes a moving delay time possible at all.
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
 
+    // Gliding the read position instead of jumping it is what turns a click into
+    // the tape-style pitch bend people actually want from a delay.
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedDelaySamples;
+    static constexpr double timeGlideSeconds = 0.120;
+
     double currentSampleRate = 44100.0;
 
     // Cached raw pointers so processBlock never does a string lookup on the audio thread.
