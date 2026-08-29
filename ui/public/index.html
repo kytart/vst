@@ -26,10 +26,9 @@
       </div>
 
       <div class="knob-group hidden" id="divisionGroup">
-        <div class="division-dial" id="division">
-          <button class="step" data-step="-1" aria-label="Shorter">&#8249;</button>
-          <span id="divisionValue">1/8.</span>
-          <button class="step" data-step="1" aria-label="Longer">&#8250;</button>
+        <div class="select-wrap">
+          <select id="division" aria-label="Note division"></select>
+          <span class="caret" aria-hidden="true">&#9662;</span>
         </div>
         <label>Division</label>
         <output id="divisionMs">&mdash;</output>

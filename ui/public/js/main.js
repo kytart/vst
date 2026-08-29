@@ -38,7 +38,7 @@ function wireKnob(el) {
   function render() {
     const n = state.getNormalisedValue();
     valueArc.style.strokeDasharray = `${n * ARC_LENGTH} 240`;
-    pointer.style.transform = `rotate(${135 + n * 270}deg)`;
+    pointer.style.transform = `rotate(${-135 + n * 270}deg)`;
     if (readout) readout.textContent = formatValue(state);
   }
 
@@ -84,7 +84,7 @@ document.querySelectorAll(".knob").forEach(wireKnob);
 const syncButton    = document.getElementById("sync");
 const timeGroup     = document.getElementById("timeGroup");
 const divisionGroup = document.getElementById("divisionGroup");
-const divisionValue = document.getElementById("divisionValue");
+const divisionSelect = document.getElementById("division");
 const divisionMs    = document.getElementById("divisionMs");
 
 function divisionNames() {
@@ -101,10 +101,29 @@ function renderSync() {
   renderDivision();
 }
 
-function renderDivision() {
+// The choice list arrives from the backend asynchronously, so rebuild the
+// options whenever it changes rather than hard-coding them in the markup.
+let renderedChoices = [];
+
+function renderDivisionOptions() {
   const names = divisionNames();
+  if (names.join("\u0000") === renderedChoices.join("\u0000")) return;
+
+  renderedChoices = names.slice();
+  divisionSelect.replaceChildren(
+    ...names.map((name, i) => {
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = name;
+      return option;
+    })
+  );
+}
+
+function renderDivision() {
+  renderDivisionOptions();
   const index = divisionState.getChoiceIndex();
-  divisionValue.textContent = names[index] ?? "--";
+  divisionSelect.value = String(index);
 
   // The UI has no access to host tempo, so show the division's length at the
   // 120 BPM the processor falls back to, labelled so it isn't mistaken for truth.
@@ -119,15 +138,9 @@ syncButton.addEventListener("click", () => {
   renderSync();
 });
 
-document.querySelectorAll(".step").forEach((button) => {
-  button.addEventListener("click", () => {
-    const names = divisionNames();
-    const next = divisionState.getChoiceIndex() + Number(button.dataset.step);
-    if (next >= 0 && next < names.length) {
-      divisionState.setChoiceIndex(next);
-      renderDivision();
-    }
-  });
+divisionSelect.addEventListener("change", () => {
+  divisionState.setChoiceIndex(Number(divisionSelect.value));
+  renderDivision();
 });
 
 syncState.valueChangedEvent.addListener(renderSync);

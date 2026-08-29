@@ -107,30 +107,40 @@ output {
 .knob:hover .value { stroke: #9ce4ff; }
 .knob.active .value { stroke: #fff; }
 
-/* ---- division stepper ---- */
-.division-dial {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 78px;
-  height: 56px;
+/* ---- division dropdown ---- */
+.select-wrap { position: relative; width: 78px; height: 56px; }
+
+#division {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 100%;
+  padding: 0 13px;
   border: 1px solid var(--stroke);
   border-radius: 8px;
   background: rgba(20,28,52,0.6);
-}
-.division-dial span {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
   color: var(--accent);
-}
-.step {
-  width: 20px; height: 100%;
-  border: 0; background: none;
-  color: var(--ink-dim);
+  font: inherit;
   font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   cursor: pointer;
 }
-.step:hover { color: var(--ink); }
+#division:hover  { border-color: #2c3a63; }
+#division:focus  { outline: none; border-color: var(--accent); }
+
+/* The popup itself is drawn by the OS, so give the options a sane palette
+   rather than inheriting a transparent background. */
+#division option { background: #131a2e; color: var(--ink); }
+
+.caret {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--ink-dim);
+  pointer-events: none;
+}
 
 /* ---- sync switch ---- */
 .sync-group > #sync { margin: 15px 0; }
