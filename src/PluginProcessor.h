@@ -33,6 +33,16 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    juce::AudioProcessorValueTreeState apvts;
+
 private:
+    // Cached raw pointers so processBlock never does a string lookup on the audio thread.
+    std::atomic<float>* timeMsParam     = nullptr;
+    std::atomic<float>* feedbackParam   = nullptr;
+    std::atomic<float>* mixParam        = nullptr;
+    std::atomic<float>* toneHzParam     = nullptr;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OrbitDelayAudioProcessor)
 };

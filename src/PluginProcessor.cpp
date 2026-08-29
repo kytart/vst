@@ -1,10 +1,57 @@
 #include "PluginProcessor.h"
 
+namespace
+{
+    // Frequency and time both feel logarithmic to the ear, so a linear knob would
+    // cram everything audible into the bottom of its travel. setSkewForCentre puts
+    // the given value at the halfway point of the knob.
+    juce::NormalisableRange<float> skewedRange (float min, float max, float centre, float interval)
+    {
+        juce::NormalisableRange<float> range { min, max, interval };
+        range.setSkewForCentre (centre);
+        return range;
+    }
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout OrbitDelayAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "time", 1 }, "Time",
+        skewedRange (1.0f, 2000.0f, 300.0f, 0.01f), 400.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    // Capped below unity: without a saturator in the loop, >=100% grows without bound.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "feedback", 1 }, "Feedback",
+        juce::NormalisableRange<float> { 0.0f, 95.0f, 0.1f }, 35.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "mix", 1 }, "Mix",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 35.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
+    // Geometric centre of 200..20000 is 2000, which makes the knob feel even.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "tone", 1 }, "Tone",
+        skewedRange (200.0f, 20000.0f, 2000.0f, 1.0f), 6000.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    return layout;
+}
+
 OrbitDelayAudioProcessor::OrbitDelayAudioProcessor()
     : AudioProcessor (BusesProperties()
                           .withInput ("Input", juce::AudioChannelSet::stereo(), true)
-                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
+                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    timeMsParam   = apvts.getRawParameterValue ("time");
+    feedbackParam = apvts.getRawParameterValue ("feedback");
+    mixParam      = apvts.getRawParameterValue ("mix");
+    toneHzParam   = apvts.getRawParameterValue ("tone");
 }
 
 void OrbitDelayAudioProcessor::prepareToPlay (double, int)
@@ -39,12 +86,17 @@ juce::AudioProcessorEditor* OrbitDelayAudioProcessor::createEditor()
     return new juce::GenericAudioProcessorEditor (*this);
 }
 
-void OrbitDelayAudioProcessor::getStateInformation (juce::MemoryBlock&)
+void OrbitDelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
+    if (auto xml = apvts.copyState().createXml())
+        copyXmlToBinary (*xml, destData);
 }
 
-void OrbitDelayAudioProcessor::setStateInformation (const void*, int)
+void OrbitDelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    if (auto xml = getXmlFromBinary (data, sizeInBytes))
+        if (xml->hasTagName (apvts.state.getType()))
+            apvts.replaceState (juce::ValueTree::fromXml (*xml));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
