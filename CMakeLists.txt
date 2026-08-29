@@ -21,21 +21,60 @@ juce_add_plugin(OrbitDelay
     BUNDLE_ID com.palmmuting.orbitdelay
     PLUGIN_MANUFACTURER_CODE Palm
     PLUGIN_CODE Dly1
+    NEEDS_WEB_BROWSER TRUE
     FORMATS VST3 Standalone
     PRODUCT_NAME "Orbit Delay")
 
 target_sources(OrbitDelay PRIVATE
-    src/PluginProcessor.cpp)
+    src/PluginProcessor.cpp
+    src/PluginEditor.cpp)
 
-target_compile_definitions(OrbitDelay PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0)
+# ---------------------------------------------------------------------------
+# Web UI assets
+#
+# JUCE's JavaScript frontend library is copied in beside our own files, the
+# whole ui/public tree is zipped, and the zip is embedded as binary data. The
+# editor serves files out of that zip at runtime, so the shipped plugin is
+# self-contained with no external assets.
+# ---------------------------------------------------------------------------
+set(WEBVIEW_FILES_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui/public")
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/libs/JUCE/modules/juce_gui_extra/native/javascript/"
+     DESTINATION "${WEBVIEW_FILES_SOURCE_DIR}/js/juce/")
+
+set(WEBVIEW_FILES_ZIP "${CMAKE_BINARY_DIR}/webview_files.zip")
+
+add_custom_target(ZipWebViewFiles
+    COMMAND ${CMAKE_COMMAND} -E tar cf "${WEBVIEW_FILES_ZIP}" --format=zip "public"
+    BYPRODUCTS "${WEBVIEW_FILES_ZIP}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ui"
+    COMMENT "Zipping web UI files"
+    VERBATIM)
+
+juce_add_binary_data(WebViewFiles
+    HEADER_NAME WebViewFiles.h
+    NAMESPACE webview_files
+    SOURCES "${WEBVIEW_FILES_ZIP}")
+
+add_dependencies(WebViewFiles ZipWebViewFiles)
+
+target_compile_definitions(OrbitDelay
+    PUBLIC
+        JUCE_WEB_BROWSER=1
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+    PRIVATE
+        # Prefix every zip entry carries, and the origin allowed to serve the UI
+        # during design work so CSS changes don't need a C++ rebuild.
+        ZIPPED_FILES_PREFIX="public/"
+        ORBIT_DEV_SERVER_ADDRESS="http://localhost:5173")
 
 target_link_libraries(OrbitDelay
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        juce::juce_gui_extra
+        WebViewFiles
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

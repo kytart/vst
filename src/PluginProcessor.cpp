@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 
 namespace
 {
@@ -200,7 +201,7 @@ void OrbitDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
 juce::AudioProcessorEditor* OrbitDelayAudioProcessor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new OrbitDelayAudioProcessorEditor (*this);
 }
 
 void OrbitDelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

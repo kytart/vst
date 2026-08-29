@@ -1,0 +1,156 @@
+:root {
+  --bg-deep:    #05070f;
+  --bg-mid:     #0b1020;
+  --ink:        #e8ecf8;
+  --ink-dim:    #7f8aa8;
+  --accent:     #6fd3ff;
+  --accent-warm:#ff9d5c;
+  --stroke:     #1d2540;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 640px;
+  height: 420px;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--ink);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.panel { position: relative; width: 640px; height: 420px; }
+
+/* The orbit field fills the panel; controls sit on top of it. */
+#orbit { position: absolute; inset: 0; width: 640px; height: 420px; }
+
+header { position: absolute; top: 18px; left: 22px; pointer-events: none; }
+
+h1 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+h1 span { color: var(--accent); margin-left: 0.45em; font-weight: 300; }
+
+.maker {
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ---- control strip ---- */
+.controls {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 0 24px;
+  background: linear-gradient(to top, rgba(5,7,15,0.97) 55%, rgba(5,7,15,0));
+}
+
+.knob-group, .sync-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 78px;
+}
+
+.knob-group.hidden { display: none; }
+
+label {
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+output {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  min-height: 14px;
+}
+
+/* ---- knobs ---- */
+.knob { width: 56px; height: 56px; cursor: ns-resize; touch-action: none; }
+.knob svg { width: 100%; height: 100%; overflow: visible; }
+
+.knob .track, .knob .value {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  /* 270 degrees of a r=38 circle, rotated to start at lower-left */
+  transform: rotate(135deg);
+  transform-origin: 50px 50px;
+}
+.knob .track { stroke: var(--stroke); stroke-dasharray: 179 240; }
+.knob .value { stroke: var(--accent); stroke-dasharray: 0 240; transition: stroke 0.2s; }
+
+.knob .pointer {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transform-origin: 50px 50px;
+}
+
+.knob:hover .value { stroke: #9ce4ff; }
+.knob.active .value { stroke: #fff; }
+
+/* ---- division stepper ---- */
+.division-dial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 78px;
+  height: 56px;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: rgba(20,28,52,0.6);
+}
+.division-dial span {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.step {
+  width: 20px; height: 100%;
+  border: 0; background: none;
+  color: var(--ink-dim);
+  font-size: 15px;
+  cursor: pointer;
+}
+.step:hover { color: var(--ink); }
+
+/* ---- sync switch ---- */
+.sync-group > #sync { margin: 15px 0; }
+
+#sync {
+  width: 52px; height: 26px;
+  border: 1px solid var(--stroke);
+  border-radius: 13px;
+  background: rgba(20,28,52,0.6);
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+#sync span {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--ink-dim);
+  transition: left 0.16s ease, background 0.16s ease;
+}
+#sync[aria-checked="true"] { border-color: var(--accent); }
+#sync[aria-checked="true"] span { left: 29px; background: var(--accent); }

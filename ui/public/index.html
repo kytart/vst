@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Orbit Delay</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="panel">
+    <canvas id="orbit"></canvas>
+
+    <header>
+      <h1>Orbit<span>Delay</span></h1>
+      <div class="maker">Palm Muting</div>
+    </header>
+
+    <div class="controls">
+      <div class="knob-group" id="timeGroup">
+        <div class="knob" data-param="time"><svg viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="38" />
+          <circle class="value" cx="50" cy="50" r="38" />
+          <line class="pointer" x1="50" y1="50" x2="50" y2="16" />
+        </svg></div>
+        <label>Time</label>
+        <output data-readout="time">&mdash;</output>
+      </div>
+
+      <div class="knob-group hidden" id="divisionGroup">
+        <div class="division-dial" id="division">
+          <button class="step" data-step="-1" aria-label="Shorter">&#8249;</button>
+          <span id="divisionValue">1/8.</span>
+          <button class="step" data-step="1" aria-label="Longer">&#8250;</button>
+        </div>
+        <label>Division</label>
+        <output id="divisionMs">&mdash;</output>
+      </div>
+
+      <div class="knob-group">
+        <div class="knob" data-param="feedback"><svg viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="38" />
+          <circle class="value" cx="50" cy="50" r="38" />
+          <line class="pointer" x1="50" y1="50" x2="50" y2="16" />
+        </svg></div>
+        <label>Feedback</label>
+        <output data-readout="feedback">&mdash;</output>
+      </div>
+
+      <div class="knob-group">
+        <div class="knob" data-param="tone"><svg viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="38" />
+          <circle class="value" cx="50" cy="50" r="38" />
+          <line class="pointer" x1="50" y1="50" x2="50" y2="16" />
+        </svg></div>
+        <label>Tone</label>
+        <output data-readout="tone">&mdash;</output>
+      </div>
+
+      <div class="knob-group">
+        <div class="knob" data-param="mix"><svg viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="38" />
+          <circle class="value" cx="50" cy="50" r="38" />
+          <line class="pointer" x1="50" y1="50" x2="50" y2="16" />
+        </svg></div>
+        <label>Mix</label>
+        <output data-readout="mix">&mdash;</output>
+      </div>
+
+      <div class="sync-group">
+        <button id="sync" role="switch" aria-checked="false"><span></span></button>
+        <label>Sync</label>
+        <output id="syncMode">Free</output>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
